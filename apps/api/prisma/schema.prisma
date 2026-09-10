@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PapelVinculo {
+  ADMIN
+  EXECUTOR
+  CLIENTE
+}
+
+enum StatusVinculo {
+  PENDENTE
+  ATIVO
+  INATIVO
+}
+
+enum StatusOS {
+  AGENDADO
+  EXECUTANDO
+  FINALIZADO
+  CANCELADO
+  RECEBIDO
+}
+
+enum TipoCampoRelatorio {
+  CHECKBOX
+  TEXTO_CURTO
+  TEXTO_LONGO
+}
+
+model User {
+  id           String   @id @default(uuid())
+  nome         String
+  email        String   @unique
+  senhaHash    String
+  telefone     String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  vinculos          Vinculo[]
+  empresasCriadas   Empresa[]          @relation("EmpresaCriador")
+  convitesCriados   Convite[]          @relation("ConviteCriador")
+  ordensCriadas     OrdemServico[]     @relation("OrdemServicoCriador")
+  redefinicoesSenha RedefinicaoSenha[]
+}
+
+model RedefinicaoSenha {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiraEm  DateTime
+  usadoEm   DateTime?
+  criadoEm  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Empresa {
+  id          String   @id @default(uuid())
+  nome        String
+  documento   String?
+  telefone    String?
+  criadoPorId String
+  criadoEm    DateTime @default(now())
+
+  criadoPor     User           @relation("EmpresaCriador", fields: [criadoPorId], references: [id])
+  vinculos      Vinculo[]
+  convites      Convite[]
+  servicos      Servico[]
+  ordensServico OrdemServico[]
+}
+
+model Vinculo {
+  id        String        @id @default(uuid())
+  userId    String
+  empresaId String
+  papel     PapelVinculo
+  status    StatusVinculo @default(ATIVO)
+  criadoEm  DateTime      @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  servicosQueExecuta ExecutorServico[]
+  ordensComoCliente  OrdemServico[]     @relation("OrdemServicoCliente")
+  itensComoExecutor  OrdemServicoItem[] @relation("OrdemServicoItemExecutor")
+
+  @@unique([userId, empresaId])
+}
+
+model Convite {
+  id             String       @id @default(uuid())
+  empresaId      String
+  papel          PapelVinculo
+  token          String       @unique
+  emailConvidado String?
+  criadoPorId    String
+  expiraEm       DateTime
+  usadoEm        DateTime?
+  criadoEm       DateTime     @default(now())
+
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  criadoPor User    @relation("ConviteCriador", fields: [criadoPorId], references: [id])
+}
+
+model Servico {
+  id        String   @id @default(uuid())
+  empresaId String
+  nome      String
+  descricao String?
+  valor     Decimal  @db.Decimal(10, 2)
+  fotos     String[]
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now())
+
+  empresa           Empresa            @relation(fields: [empresaId], references: [id])
+  executores        ExecutorServico[]
+  itensOrdemServico OrdemServicoItem[]
+  camposRelatorio   CampoRelatorio[]
+}
+
+model CampoRelatorio {
+  id          String             @id @default(uuid())
+  servicoId   String
+  rotulo      String
+  tipo        TipoCampoRelatorio
+  obrigatorio Boolean            @default(false)
+  ordem       Int                @default(0)
+  criadoEm    DateTime           @default(now())
+
+  servico Servico          @relation(fields: [servicoId], references: [id])
+  valores RelatorioValor[]
+}
+
+model ExecutorServico {
+  id                String @id @default(uuid())
+  vinculoExecutorId String
+  servicoId         String
+
+  vinculoExecutor Vinculo @relation(fields: [vinculoExecutorId], references: [id])
+  servico         Servico @relation(fields: [servicoId], references: [id])
+
+  @@unique([vinculoExecutorId, servicoId])
+}
+
+model OrdemServico {
+  id               String   @id @default(uuid())
+  empresaId        String
+  vinculoClienteId String
+  status           StatusOS @default(AGENDADO)
+  dataAgendada     DateTime
+  observacoes      String?
+  valorTotal       Decimal  @default(0) @db.Decimal(10, 2)
+  criadoPorId      String
+  criadoEm         DateTime @default(now())
+  atualizadoEm     DateTime @updatedAt
+
+  empresa        Empresa @relation(fields: [empresaId], references: [id])
+  vinculoCliente Vinculo @relation("OrdemServicoCliente", fields: [vinculoClienteId], references: [id])
+  criadoPor      User    @relation("OrdemServicoCriador", fields: [criadoPorId], references: [id])
+
+  itens OrdemServicoItem[]
+}
+
+model OrdemServicoItem {
+  id                String   @id @default(uuid())
+  ordemServicoId    String
+  servicoId         String
+  vinculoExecutorId String
+  valor             Decimal  @db.Decimal(10, 2)
+  criadoEm          DateTime @default(now())
+
+  ordemServico    OrdemServico @relation(fields: [ordemServicoId], references: [id])
+  servico         Servico      @relation(fields: [servicoId], references: [id])
+  vinculoExecutor Vinculo      @relation("OrdemServicoItemExecutor", fields: [vinculoExecutorId], references: [id])
+
+  relatorio Relatorio?
+}
+
+model Relatorio {
+  id                 String   @id @default(uuid())
+  ordemServicoItemId String   @unique
+  horaInicio         DateTime
+  horaFim            DateTime
+  observacoes        String?
+  fotos              String[]
+  criadoEm           DateTime @default(now())
+
+  ordemServicoItem OrdemServicoItem @relation(fields: [ordemServicoItemId], references: [id])
+  valores          RelatorioValor[]
+}
+
+model RelatorioValor {
+  id          String @id @default(uuid())
+  relatorioId String
+  campoId     String
+  valor       String
+
+  relatorio Relatorio      @relation(fields: [relatorioId], references: [id])
+  campo     CampoRelatorio @relation(fields: [campoId], references: [id])
+
+  @@unique([relatorioId, campoId])
+}
