@@ -27,6 +27,16 @@ enum StatusOS {
   RECEBIDO
 }
 
+enum Segmento {
+  PET
+  CONSTRUCAO
+  LIMPEZA
+  BELEZA
+  MANUTENCAO
+  AULAS
+  OUTRO
+}
+
 enum TipoCampoRelatorio {
   CHECKBOX
   TEXTO_CURTO
@@ -65,6 +75,7 @@ model Empresa {
   nome        String
   documento   String?
   telefone    String?
+  segmento    Segmento @default(OUTRO)
   criadoPorId String
   criadoEm    DateTime @default(now())
 

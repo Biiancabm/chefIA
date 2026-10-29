@@ -45,6 +45,13 @@ export class EmpresasController {
     return this.empresasService.update(empresaId, dto);
   }
 
+  @Post(':empresaId/servicos-sugeridos')
+  @UseGuards(EmpresaRoleGuard)
+  @Roles(PapelVinculo.ADMIN)
+  adicionarServicosSugeridos(@Param('empresaId') empresaId: string) {
+    return this.empresasService.adicionarServicosSugeridos(empresaId);
+  }
+
   @Get(':empresaId/membros')
   @UseGuards(EmpresaRoleGuard)
   @Roles(PapelVinculo.ADMIN)

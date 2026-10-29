@@ -3,10 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PapelVinculo, StatusVinculo } from '@prisma/client';
+import { PapelVinculo, Prisma, Segmento, StatusVinculo } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
+import { SERVICOS_SUGERIDOS } from './servicos-sugeridos';
 
 @Injectable()
 export class EmpresasService {
@@ -17,6 +18,7 @@ export class EmpresasService {
       const empresa = await tx.empresa.create({
         data: {
           nome: dto.nome,
+          segmento: dto.segmento,
           documento: dto.documento,
           telefone: dto.telefone,
           criadoPorId: userId,
@@ -32,8 +34,61 @@ export class EmpresasService {
         },
       });
 
+      if (dto.criarServicosSugeridos) {
+        await this.criarSugeridos(tx, empresa.id, empresa.segmento);
+      }
+
       return empresa;
     });
+  }
+
+  // Adiciona ao catálogo os serviços sugeridos do ramo atual que ainda não existem
+  async adicionarServicosSugeridos(empresaId: string) {
+    const empresa = await this.prisma.empresa.findUnique({
+      where: { id: empresaId },
+    });
+    if (!empresa) throw new NotFoundException('Empresa não encontrada');
+
+    return this.prisma.$transaction((tx) =>
+      this.criarSugeridos(tx, empresaId, empresa.segmento),
+    );
+  }
+
+  private async criarSugeridos(
+    tx: Prisma.TransactionClient,
+    empresaId: string,
+    segmento: Segmento,
+  ) {
+    const existentes = await tx.servico.findMany({
+      where: { empresaId },
+      select: { nome: true },
+    });
+    const nomesExistentes = new Set(existentes.map((s) => s.nome.toLowerCase()));
+    const novos = SERVICOS_SUGERIDOS[segmento].filter(
+      (s) => !nomesExistentes.has(s.nome.toLowerCase()),
+    );
+
+    // Cria de trás pra frente porque a lista de serviços mostra o mais recente primeiro
+    for (const sugerido of [...novos].reverse()) {
+      await tx.servico.create({
+        data: {
+          empresaId,
+          nome: sugerido.nome,
+          descricao: sugerido.descricao,
+          valor: sugerido.valor,
+          camposRelatorio: {
+            create: sugerido.campos.map((campo, ordem) => ({
+              rotulo: campo.rotulo,
+              tipo: campo.tipo,
+              obrigatorio: campo.obrigatorio ?? false,
+              ordem,
+            })),
+          },
+        },
+      });
+    }
+
+    return { criados: novos.length };
   }
 
   async findMinhas(userId: string) {

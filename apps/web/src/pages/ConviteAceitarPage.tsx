@@ -6,12 +6,9 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-
-const PAPEL_LABEL: Record<string, string> = {
-  ADMIN: 'administrador',
-  EXECUTOR: 'executor',
-  CLIENTE: 'cliente',
-};
+import { useEffect } from 'react';
+import { aplicarTema, configSegmento, nomePapel } from '../lib/segmentos';
+import type { PapelVinculo, Segmento } from '../types';
 
 export function ConviteAceitarPage() {
   const { token } = useParams<{ token: string }>();
@@ -21,11 +18,18 @@ export function ConviteAceitarPage() {
   const { data: convite, isLoading, isError } = useQuery({
     queryKey: ['convite', token],
     queryFn: async () =>
-      (await api.get<{ empresa: { id: string; nome: string }; papel: string }>(
+      (await api.get<{ empresa: { id: string; nome: string; segmento: Segmento }; papel: PapelVinculo }>(
         `/convites/${token}`,
       )).data,
     retry: false,
   });
+
+  const segmento = convite?.empresa.segmento ?? null;
+  useEffect(() => {
+    aplicarTema(segmento);
+    return () => aplicarTema(null);
+  }, [segmento]);
+  const Icone = segmento ? configSegmento(segmento).icon : Building2;
 
   const aceitar = useMutation({
     mutationFn: async () => api.post(`/convites/${token}/aceitar`),
@@ -36,7 +40,7 @@ export function ConviteAceitarPage() {
     <div className="flex min-h-screen items-center justify-center bg-surface px-4">
       <Card className="w-full max-w-sm text-center">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary-light text-primary">
-          <Building2 size={22} strokeWidth={1.75} />
+          <Icone size={22} strokeWidth={1.75} />
         </div>
 
         {isLoading || carregando ? (
@@ -55,7 +59,7 @@ export function ConviteAceitarPage() {
             </h1>
             <p className="mb-6 text-sm text-text-muted">
               Você foi convidado para entrar como{' '}
-              <strong className="text-text">{PAPEL_LABEL[convite.papel]}</strong>
+              <strong className="text-text">{nomePapel(convite.empresa.segmento, convite.papel).toLowerCase()}</strong>
             </p>
 
             {user ? (

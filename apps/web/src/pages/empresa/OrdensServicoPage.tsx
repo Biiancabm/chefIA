@@ -10,15 +10,18 @@ import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/Badge';
 import { api } from '../../lib/api';
 import { formatarData, formatarDataHora, formatarMoeda } from '../../lib/format';
+import { texto } from '../../lib/segmentos';
 import type { Membro, OrdemServico, Servico } from '../../types';
 import type { EmpresaOutletContext } from './EmpresaLayout';
+
+type Termos = EmpresaOutletContext['termos'];
 
 function resumoServicos(os: OrdemServico) {
   return os.itens.map((i) => i.servico.nome).join(', ');
 }
 
 export function OrdensServicoPage() {
-  const { empresaId, papel } = useOutletContext<EmpresaOutletContext>();
+  const { empresaId, papel, termos } = useOutletContext<EmpresaOutletContext>();
   const navigate = useNavigate();
   const [formAberto, setFormAberto] = useState(false);
 
@@ -33,7 +36,7 @@ export function OrdensServicoPage() {
   }
 
   if (papel === 'CLIENTE') {
-    return <HistoricoCliente ordens={ordens ?? []} onAbrir={(id) => navigate(id)} />;
+    return <HistoricoCliente termos={termos} ordens={ordens ?? []} onAbrir={(id) => navigate(id)} />;
   }
 
   const podeCriar = papel === 'ADMIN' || papel === 'EXECUTOR';
@@ -42,17 +45,17 @@ export function OrdensServicoPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-text">Ordens de serviço</h1>
+          <h1 className="text-xl font-semibold text-text">{termos.ordem.plural}</h1>
           <p className="text-sm text-text-muted">
             {papel === 'ADMIN'
-              ? 'Todos os atendimentos agendados e em andamento'
-              : 'Atendimentos em que você está designado'}
+              ? `${texto.todos(termos.ordem)} ${texto.agendado(termos.ordem)}s e em andamento`
+              : `${termos.ordem.plural} em que você está designado`}
           </p>
         </div>
         {podeCriar && (
           <Button onClick={() => setFormAberto(true)}>
             <Plus size={16} />
-            Nova OS
+            {texto.novo(termos.ordem)}
           </Button>
         )}
       </div>
@@ -60,12 +63,12 @@ export function OrdensServicoPage() {
       {!ordens?.length && (
         <EmptyState
           icon={CalendarClock}
-          title="Nenhuma ordem de serviço"
-          description="Quando um atendimento for agendado, ele aparece aqui."
+          title={texto.nenhum(termos.ordem)}
+          description={`Quando ${texto.um(termos.ordem)} for ${texto.agendado(termos.ordem)}, aparece aqui.`}
           action={
             podeCriar ? (
               <Button variant="secondary" onClick={() => setFormAberto(true)}>
-                Nova OS
+                {texto.novo(termos.ordem)}
               </Button>
             ) : undefined
           }
@@ -102,6 +105,7 @@ export function OrdensServicoPage() {
         <NovaOsModal
           open={formAberto}
           empresaId={empresaId}
+          termos={termos}
           onClose={() => setFormAberto(false)}
         />
       )}
@@ -110,9 +114,11 @@ export function OrdensServicoPage() {
 }
 
 function HistoricoCliente({
+  termos,
   ordens,
   onAbrir,
 }: {
+  termos: Termos;
   ordens: OrdemServico[];
   onAbrir: (id: string) => void;
 }) {
@@ -130,12 +136,12 @@ function HistoricoCliente({
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-xl font-semibold text-text">Seu histórico</h1>
-        <p className="text-sm text-text-muted">Acompanhe os atendimentos dessa empresa</p>
+        <p className="text-sm text-text-muted">Acompanhe {texto.os(termos.ordem)} dessa empresa</p>
       </div>
 
       {destaque && (
         <button onClick={() => onAbrir(destaque.id)} className="text-left">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary-hover p-6 text-white shadow-[0_8px_24px_rgba(37,99,235,0.28)] transition-transform hover:-translate-y-0.5">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary-hover p-6 text-white shadow-[0_8px_24px_color-mix(in_srgb,var(--color-primary)_28%,transparent)] transition-transform hover:-translate-y-0.5">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
@@ -146,7 +152,7 @@ function HistoricoCliente({
                   )}
                 </div>
                 <span className="text-xs font-semibold uppercase tracking-wide text-white/80">
-                  {destaque.status === 'EXECUTANDO' ? 'Em andamento agora' : 'Próximo atendimento'}
+                  {destaque.status === 'EXECUTANDO' ? 'Em andamento agora' : texto.proximo(termos.ordem)}
                 </span>
               </div>
               <ChevronRight size={18} className="text-white/70" />
@@ -169,7 +175,7 @@ function HistoricoCliente({
           <EmptyState
             icon={CalendarClock}
             title="Nada por aqui ainda"
-            description="Seus atendimentos concluídos vão aparecer nessa lista."
+            description={`${texto.seus(termos.ordem)} ${texto.concluidos(termos.ordem)} vão aparecer nessa lista.`}
           />
         ) : (
           <Card className="divide-y divide-border p-0">
@@ -196,10 +202,12 @@ function HistoricoCliente({
 function NovaOsModal({
   open,
   empresaId,
+  termos,
   onClose,
 }: {
   open: boolean;
   empresaId: string;
+  termos: Termos;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -255,10 +263,10 @@ function NovaOsModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Nova ordem de serviço">
+    <Modal open={open} onClose={onClose} title={texto.novo(termos.ordem)}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-text">Cliente</label>
+          <label className="mb-1.5 block text-sm font-medium text-text">{termos.cliente.singular}</label>
           <select
             required
             value={vinculoClienteId}
@@ -305,7 +313,7 @@ function NovaOsModal({
                   </select>
                 </div>
                 <div className="flex-1">
-                  <label className="mb-1 block text-xs text-text-muted">Executor</label>
+                  <label className="mb-1 block text-xs text-text-muted">{termos.executor.singular}</label>
                   <select
                     required
                     disabled={!servico}
@@ -350,7 +358,7 @@ function NovaOsModal({
         />
 
         <Button type="submit" loading={mutation.isPending} className="mt-2">
-          Criar ordem de serviço
+          Agendar {texto.min(termos.ordem)}
         </Button>
         {mutation.isError && (
           <p className="text-sm text-status-cancelado-text">

@@ -9,6 +9,9 @@ import { api } from '../../lib/api';
 import { formatarDataHora, formatarMoeda } from '../../lib/format';
 import type { OrdemServico, OrdemServicoItem, StatusOS } from '../../types';
 import type { EmpresaOutletContext } from './EmpresaLayout';
+import { texto } from '../../lib/segmentos';
+
+type Termos = EmpresaOutletContext['termos'];
 
 function paraDatetimeLocal(iso: string) {
   const d = new Date(iso);
@@ -21,7 +24,7 @@ function duracaoMinutos(inicio: string, fim: string) {
 }
 
 export function OrdemServicoDetailPage() {
-  const { empresaId, papel, vinculoId } = useOutletContext<EmpresaOutletContext>();
+  const { empresaId, papel, vinculoId, termos } = useOutletContext<EmpresaOutletContext>();
   const { ordemServicoId } = useParams<{ ordemServicoId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -65,7 +68,7 @@ export function OrdemServicoDetailPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-text-subtle">
-              {papel === 'CLIENTE' ? 'Atendimento' : os.vinculoCliente.user.nome}
+              {papel === 'CLIENTE' ? termos.ordem.singular : `${termos.cliente.singular}: ${os.vinculoCliente.user.nome}`}
             </p>
             <h1 className="text-lg font-semibold text-text">
               {formatarDataHora(os.dataAgendada)}
@@ -87,7 +90,7 @@ export function OrdemServicoDetailPage() {
               loading={mudarStatus.isPending}
               onClick={() => mudarStatus.mutate('EXECUTANDO')}
             >
-              Iniciar atendimento
+              Iniciar {texto.min(termos.ordem)}
             </Button>
             <Button
               variant="danger"
@@ -120,6 +123,7 @@ export function OrdemServicoDetailPage() {
             empresaId={empresaId}
             ordemServicoId={os.id}
             papel={papel}
+            termos={termos}
             souExecutorDoItem={item.vinculoExecutorId === vinculoId}
             onAtualizado={() => {
               queryClient.invalidateQueries({ queryKey: ['ordem-servico', ordemServicoId] });
@@ -136,7 +140,7 @@ export function OrdemServicoDetailPage() {
             loading={mudarStatus.isPending}
             onClick={() => mudarStatus.mutate('CANCELADO')}
           >
-            Cancelar OS
+            Cancelar {texto.min(termos.ordem)}
           </Button>
         </div>
       )}
@@ -150,9 +154,11 @@ function ItemCard({
   empresaId,
   ordemServicoId,
   papel,
+  termos,
   souExecutorDoItem,
   onAtualizado,
 }: {
+  termos: Termos;
   item: OrdemServicoItem;
   osStatus: StatusOS;
   empresaId: string;
@@ -170,7 +176,7 @@ function ItemCard({
         <div>
           <p className="font-medium text-text">{item.servico.nome}</p>
           <p className="text-sm text-text-muted">
-            Executor: {item.vinculoExecutor.user.nome}
+            {termos.executor.singular}: {item.vinculoExecutor.user.nome}
           </p>
         </div>
         <p className="font-semibold text-text">{formatarMoeda(item.valor)}</p>
@@ -182,13 +188,14 @@ function ItemCard({
         <RelatorioForm
           item={item}
           empresaId={empresaId}
+          termos={termos}
           ordemServicoId={ordemServicoId}
           onSalvo={onAtualizado}
         />
       ) : (
         <p className="mt-4 border-t border-border pt-4 text-sm text-text-subtle">
           {osStatus === 'AGENDADO'
-            ? 'Aguardando início do atendimento.'
+            ? `Aguardando início ${texto.doDa(termos.ordem)}.`
             : 'Relatório ainda não disponível.'}
         </p>
       )}
@@ -254,8 +261,10 @@ function RelatorioForm({
   item,
   empresaId,
   ordemServicoId,
+  termos,
   onSalvo,
 }: {
+  termos: Termos;
   item: OrdemServicoItem;
   empresaId: string;
   ordemServicoId: string;
@@ -302,7 +311,7 @@ function RelatorioForm({
       onSubmit={handleSubmit}
       className="mt-4 flex flex-col gap-4 border-t border-border pt-4"
     >
-      <p className="text-sm font-medium text-text">Registrar atendimento</p>
+      <p className="text-sm font-medium text-text">Registrar {texto.min(termos.ordem)}</p>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -395,7 +404,7 @@ function RelatorioForm({
       </div>
 
       <Button type="submit" loading={mutation.isPending}>
-        Finalizar atendimento
+        Finalizar {texto.min(termos.ordem)}
       </Button>
       {erroHorario && (
         <p className="text-sm text-status-cancelado-text">{erroHorario}</p>

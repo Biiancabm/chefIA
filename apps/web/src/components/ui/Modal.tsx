@@ -7,9 +7,10 @@ interface ModalProps {
   title: string;
   description?: string;
   children: ReactNode;
+  largo?: boolean;
 }
 
-export function Modal({ open, onClose, title, description, children }: ModalProps) {
+export function Modal({ open, onClose, title, description, children, largo }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
@@ -27,7 +28,7 @@ export function Modal({ open, onClose, title, description, children }: ModalProp
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-md rounded-2xl bg-background p-6 shadow-xl">
+      <div className={`relative w-full ${largo ? 'max-w-2xl' : 'max-w-md'} rounded-2xl bg-background p-6 shadow-xl`}>
         <div className="mb-5 flex items-start justify-between">
           <div>
             <h2 className="text-lg font-semibold text-text">{title}</h2>

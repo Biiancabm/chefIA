@@ -7,6 +7,7 @@ import { StatCard } from '../../components/ui/StatCard';
 import { StatusBadge } from '../../components/ui/Badge';
 import { api } from '../../lib/api';
 import { formatarDataHora, formatarMoeda } from '../../lib/format';
+import { texto } from '../../lib/segmentos';
 import type { Membro, OrdemServico, Servico } from '../../types';
 import type { EmpresaOutletContext } from './EmpresaLayout';
 
@@ -21,7 +22,7 @@ function ehHoje(iso: string) {
 }
 
 export function EmpresaDashboardPage() {
-  const { empresaId } = useOutletContext<EmpresaOutletContext>();
+  const { empresaId, termos } = useOutletContext<EmpresaOutletContext>();
   const navigate = useNavigate();
 
   const { data: servicos } = useQuery({
@@ -67,16 +68,16 @@ export function EmpresaDashboardPage() {
         <StatCard icon={Briefcase} cor="blue" valor={servicosAtivos} label="Serviços ativos" />
         <StatCard icon={Users} cor="violet" valor={totalEquipe} label="Pessoas na equipe" />
         <StatCard icon={PlayCircle} cor="amber" valor={emAndamento} label="Em andamento" />
-        <StatCard icon={CalendarClock} cor="green" valor={agendadosHoje} label="Agendados hoje" />
+        <StatCard icon={CalendarClock} cor="green" valor={agendadosHoje} label={`${termos.ordem.plural} hoje`} />
       </div>
 
       <div>
-        <h2 className="mb-3 text-sm font-medium text-text-muted">Próximos atendimentos</h2>
+        <h2 className="mb-3 text-sm font-medium text-text-muted">{texto.proximos(termos.ordem)}</h2>
         {!proximos.length ? (
           <EmptyState
             icon={CalendarClock}
-            title="Nada agendado"
-            description="Quando uma OS for criada, ela aparece aqui."
+            title={`${texto.nenhum(termos.ordem)} ${texto.agendado(termos.ordem)}`}
+            description={`Quando ${texto.um(termos.ordem)} for ${texto.agendado(termos.ordem)}, aparece aqui.`}
           />
         ) : (
           <Card className="divide-y divide-border p-0">

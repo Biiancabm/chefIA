@@ -10,16 +10,18 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { api } from '../../lib/api';
 import { formatarData } from '../../lib/format';
+import { texto } from '../../lib/segmentos';
 import type { Convite, Membro, PapelVinculo } from '../../types';
 import type { EmpresaOutletContext } from './EmpresaLayout';
 
-const GRUPOS: { papel: PapelVinculo; titulo: string }[] = [
-  { papel: 'EXECUTOR', titulo: 'Executores' },
-  { papel: 'CLIENTE', titulo: 'Clientes' },
-];
+type Termos = EmpresaOutletContext['termos'];
 
 export function EquipePage() {
-  const { empresaId } = useOutletContext<EmpresaOutletContext>();
+  const { empresaId, termos } = useOutletContext<EmpresaOutletContext>();
+  const GRUPOS: { papel: PapelVinculo; titulo: string }[] = [
+    { papel: 'EXECUTOR', titulo: termos.executor.plural },
+    { papel: 'CLIENTE', titulo: termos.cliente.plural },
+  ];
   const queryClient = useQueryClient();
   const [conviteModalAberto, setConviteModalAberto] = useState(false);
 
@@ -51,7 +53,7 @@ export function EquipePage() {
         <div>
           <h1 className="text-xl font-semibold text-text">Equipe</h1>
           <p className="text-sm text-text-muted">
-            Executores e clientes vinculados a essa empresa
+            {termos.executor.plural} e {texto.min(termos.cliente, true)} vinculados a essa empresa
           </p>
         </div>
         <Button onClick={() => setConviteModalAberto(true)}>
@@ -109,7 +111,7 @@ export function EquipePage() {
           <EmptyState
             icon={Link2}
             title="Nenhum convite ativo"
-            description="Gere um link para um executor ou cliente entrar na empresa."
+            description={`Gere um link para um ${texto.min(termos.executor)} ou ${texto.min(termos.cliente)} entrar na empresa.`}
           />
         )}
         {!!convites?.length && (
@@ -118,6 +120,7 @@ export function EquipePage() {
               <ConviteRow
                 key={convite.id}
                 convite={convite}
+                termos={termos}
                 onRevogar={() => revogarConvite.mutate(convite.id)}
               />
             ))}
@@ -128,20 +131,29 @@ export function EquipePage() {
       <ConviteModal
         open={conviteModalAberto}
         empresaId={empresaId}
+        termos={termos}
         onClose={() => setConviteModalAberto(false)}
       />
     </div>
   );
 }
 
-function ConviteRow({ convite, onRevogar }: { convite: Convite; onRevogar: () => void }) {
+function ConviteRow({
+  convite,
+  termos,
+  onRevogar,
+}: {
+  convite: Convite;
+  termos: Termos;
+  onRevogar: () => void;
+}) {
   const link = `${window.location.origin}/convites/${convite.token}`;
   return (
     <div className="flex items-center justify-between gap-3 px-6 py-3.5">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-text">
-            {convite.papel === 'EXECUTOR' ? 'Executor' : 'Cliente'}
+            {convite.papel === 'EXECUTOR' ? termos.executor.singular : termos.cliente.singular}
           </span>
           <span className="text-xs text-text-subtle">
             expira em {formatarData(convite.expiraEm)}
@@ -188,10 +200,12 @@ function CopyButton({ texto }: { texto: string }) {
 function ConviteModal({
   open,
   empresaId,
+  termos,
   onClose,
 }: {
   open: boolean;
   empresaId: string;
+  termos: Termos;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -261,7 +275,7 @@ function ConviteModal({
                   }`}
                 >
                   <Users size={15} />
-                  {opcao === 'EXECUTOR' ? 'Executor' : 'Cliente'}
+                  {opcao === 'EXECUTOR' ? termos.executor.singular : termos.cliente.singular}
                 </button>
               ))}
             </div>

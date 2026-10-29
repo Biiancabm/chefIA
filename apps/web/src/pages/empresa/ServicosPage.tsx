@@ -13,6 +13,7 @@ import { api } from '../../lib/api';
 import { formatarMoeda } from '../../lib/format';
 import type { Membro, Servico, TipoCampoRelatorio } from '../../types';
 import type { EmpresaOutletContext } from './EmpresaLayout';
+import { texto } from '../../lib/segmentos';
 
 const TIPO_CAMPO_LABEL: Record<TipoCampoRelatorio, string> = {
   CHECKBOX: 'Confirmação (sim/não)',
@@ -21,7 +22,7 @@ const TIPO_CAMPO_LABEL: Record<TipoCampoRelatorio, string> = {
 };
 
 export function ServicosPage() {
-  const { empresaId, papel } = useOutletContext<EmpresaOutletContext>();
+  const { empresaId, papel, termos } = useOutletContext<EmpresaOutletContext>();
   const isAdmin = papel === 'ADMIN';
   const queryClient = useQueryClient();
 
@@ -127,7 +128,7 @@ export function ServicosPage() {
                   </span>
                 )}
                 {!servico.executores.length && (
-                  <span className="text-xs text-text-subtle">Sem executores</span>
+                  <span className="text-xs text-text-subtle">Sem {texto.min(termos.executor, true)}</span>
                 )}
               </div>
 
@@ -140,7 +141,7 @@ export function ServicosPage() {
                   <button
                     onClick={() => setServicoExecutoresId(servico.id)}
                     className="rounded-lg p-2 text-text-subtle transition-colors hover:bg-surface hover:text-text"
-                    title="Gerenciar executores"
+                    title={`Gerenciar ${texto.min(termos.executor, true)}`}
                   >
                     <UsersIcon size={16} />
                   </button>
@@ -254,7 +255,7 @@ function ServicoFormModal({
       open={open}
       onClose={onClose}
       title={servico ? 'Editar serviço' : 'Novo serviço'}
-      description="Esses dados aparecem no catálogo visto pelos executores e clientes"
+      description="Esses dados aparecem no catálogo visto pela equipe e pelos clientes"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
@@ -294,6 +295,7 @@ function ExecutoresModal({
   empresaId: string;
   onClose: () => void;
 }) {
+  const { termos } = useOutletContext<EmpresaOutletContext>();
   const queryClient = useQueryClient();
   const { data: membros } = useQuery({
     queryKey: ['membros', empresaId],
@@ -323,13 +325,13 @@ function ExecutoresModal({
     <Modal
       open
       onClose={onClose}
-      title="Executores"
+      title={termos.executor.plural}
       description={`Quem pode ser designado para "${servico.nome}"`}
     >
       <div className="flex flex-col gap-1">
         {!executores.length && (
           <p className="py-4 text-center text-sm text-text-muted">
-            Nenhum executor cadastrado na equipe ainda.
+            Nenhum {texto.min(termos.executor)} cadastrado na equipe ainda.
           </p>
         )}
         {executores.map((membro) => {
@@ -373,6 +375,7 @@ function ChecklistModal({
   empresaId: string;
   onClose: () => void;
 }) {
+  const { termos } = useOutletContext<EmpresaOutletContext>();
   const queryClient = useQueryClient();
   const [rotulo, setRotulo] = useState('');
   const [tipo, setTipo] = useState<TipoCampoRelatorio>('CHECKBOX');
@@ -416,7 +419,7 @@ function ChecklistModal({
       open
       onClose={onClose}
       title="Checklist do relatório"
-      description={`O que o executor preenche ao finalizar "${servico.nome}"`}
+      description={`O que o ${texto.min(termos.executor)} preenche ao finalizar "${servico.nome}"`}
     >
       <div className="flex flex-col gap-4">
         {!servico.camposRelatorio.length ? (

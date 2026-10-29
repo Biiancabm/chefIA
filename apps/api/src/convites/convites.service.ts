@@ -70,7 +70,11 @@ export class ConvitesService {
   async preview(token: string) {
     const convite = await this.buscarValido(token);
     return {
-      empresa: { id: convite.empresa.id, nome: convite.empresa.nome },
+      empresa: {
+        id: convite.empresa.id,
+        nome: convite.empresa.nome,
+        segmento: convite.empresa.segmento,
+      },
       papel: convite.papel,
     };
   }

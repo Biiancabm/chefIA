@@ -1,3 +1,11 @@
+export type Segmento =
+  | 'PET'
+  | 'CONSTRUCAO'
+  | 'LIMPEZA'
+  | 'BELEZA'
+  | 'MANUTENCAO'
+  | 'AULAS'
+  | 'OUTRO';
 export type PapelVinculo = 'ADMIN' | 'EXECUTOR' | 'CLIENTE';
 export type StatusVinculo = 'PENDENTE' | 'ATIVO' | 'INATIVO';
 export type StatusOS =
@@ -19,6 +27,7 @@ export interface Empresa {
   nome: string;
   documento: string | null;
   telefone: string | null;
+  segmento: Segmento;
   criadoPorId: string;
   criadoEm: string;
 }
