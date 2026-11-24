@@ -2,7 +2,7 @@
 // - Arquivos do app com hash no nome (/assets/...): guardados no aparelho, abrem na hora.
 // - Páginas: busca na rede; sem internet, abre a última versão guardada do app.
 // - API e fotos (/api, /uploads): sempre da rede, nunca guardados (são dados de clientes).
-const VERSAO = 'easyservice-v1';
+const VERSAO = 'easyservice-v2';
 const ESSENCIAIS = ['/', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
