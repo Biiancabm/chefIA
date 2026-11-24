@@ -1,44 +1,270 @@
 @import 'tailwindcss';
 
-@theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+@custom-variant dark (&:where(.dark, .dark *));
 
-  --color-background: #ffffff;
-  --color-surface: #f1f5f9;
-  --color-surface-hover: #e2e8f0;
-  --color-border: #e2e8f0;
+/*
+  Paleta única: violeta (ametista) + neutros levemente arroxeados.
+  A cor da marca marca só o que é ação ou está ativo; o resto é neutro.
+  Verde e vermelho aparecem só como significado (concluído, erro).
+*/
+:root {
+  color-scheme: light;
+  --bg: #f6f5f9;
+  --panel: #ffffff;
+  --surface: #f0eef5;
+  --surface-hover: #e8e5f0;
+  --line: #e3e0ea;
+  --line-strong: #cbc6d8;
 
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-light: #dbeafe;
+  --fg: #191624;
+  --fg-muted: #555068;
+  --fg-subtle: #6c6780;
 
-  --color-text: #0f172a;
-  --color-text-muted: #64748b;
-  --color-text-subtle: #94a3b8;
+  --primary: #6a3fd4;
+  --primary-hover: #5a31b8;
+  --primary-soft: #f1ecfd;
+  --primary-line: #d9cdf9;
+  --primary-text: #5a31b8;
+  --primary-strong: #24154d;
 
-  --color-status-agendado-bg: #eff6ff;
-  --color-status-agendado-text: #1d4ed8;
-  --color-status-executando-bg: #fffbeb;
-  --color-status-executando-text: #b45309;
-  --color-status-finalizado-bg: #f0fdfa;
-  --color-status-finalizado-text: #0f766e;
-  --color-status-cancelado-bg: #fef2f2;
-  --color-status-cancelado-text: #b91c1c;
-  --color-status-recebido-bg: #f0fdf4;
-  --color-status-recebido-text: #15803d;
+  --ok: #1d7a46;
+  --ok-soft: #e6f4ec;
+  --danger: #c53030;
+  --danger-soft: #fcebeb;
+
+  /* Financeiro: as três partes do mês (validadas para daltonismo e contraste) */
+  --fin-recebido: #1d7a46;
+  --fin-receber: #6a3fd4;
+  --fin-previsto: #a98fe8;
+
+  --shadow-overlay: 0 16px 40px -12px rgb(25 20 45 / 0.22), 0 2px 6px rgb(25 20 45 / 0.06);
+  --shadow-card: 0 1px 2px rgb(25 20 45 / 0.05);
 }
 
-body {
-  background-color: var(--color-background);
-  color: var(--color-text);
-  font-family: var(--font-sans);
+.dark {
+  color-scheme: dark;
+  --bg: #111017;
+  --panel: #18161f;
+  --surface: #201d29;
+  --surface-hover: #282433;
+  --line: #2c2838;
+  --line-strong: #403a50;
+
+  --fg: #eeecf3;
+  --fg-muted: #b0abbe;
+  --fg-subtle: #918ba2;
+
+  --primary: #6a3fd4;
+  --primary-hover: #7a52e0;
+  --primary-soft: #251c3d;
+  --primary-line: #3d2e66;
+  --primary-text: #bba5f7;
+  --primary-strong: #1d1238;
+
+  --ok: #5fcf8e;
+  --ok-soft: #12261b;
+  --danger: #ff7b72;
+  --danger-soft: #34161a;
+
+  --fin-recebido: #3a9e66;
+  --fin-receber: #9a7af2;
+  --fin-previsto: #5f4ab2;
+
+  --shadow-overlay: 0 16px 40px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.05);
+  --shadow-card: none;
 }
 
-@keyframes progresso {
+@theme inline {
+  --font-sans: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-background: var(--bg);
+  --color-panel: var(--panel);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--line);
+  --color-border-strong: var(--line-strong);
+
+  --color-text: var(--fg);
+  --color-text-muted: var(--fg-muted);
+  --color-text-subtle: var(--fg-subtle);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-line: var(--primary-line);
+  --color-primary-text: var(--primary-text);
+  --color-primary-strong: var(--primary-strong);
+
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --color-fin-recebido: var(--fin-recebido);
+  --color-fin-receber: var(--fin-receber);
+  --color-fin-previsto: var(--fin-previsto);
+
+  --shadow-overlay: var(--shadow-overlay);
+  --shadow-card: var(--shadow-card);
+}
+
+@layer base {
+  html {
+    background-color: var(--bg);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 28%, transparent);
+    color: var(--fg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--primary);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  /* Campo de formulário */
+  .campo {
+    width: 100%;
+    height: 2.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--line-strong);
+    background-color: var(--panel);
+    padding: 0 0.75rem;
+    font-size: 0.875rem;
+    color: var(--fg);
+    outline: none;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+  textarea.campo {
+    height: auto;
+    padding: 0.5rem 0.75rem;
+    line-height: 1.5;
+    resize: vertical;
+  }
+  .campo::placeholder {
+    color: var(--fg-subtle);
+  }
+  .campo:hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--primary) 35%, var(--line-strong));
+  }
+  .campo:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 18%, transparent);
+  }
+  .campo:disabled {
+    background-color: var(--surface);
+    color: var(--fg-subtle);
+    cursor: not-allowed;
+  }
+  select.campo {
+    appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236c6780' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.625rem center;
+  }
+  .campo::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+  }
+  .dark .campo::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+
+  .rotulo {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--fg);
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* O atendimento em andamento pulsa, devagar */
+@keyframes pulso {
   0% {
-    transform: translateX(-100%);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 45%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 7px color-mix(in oklab, var(--primary) 0%, transparent);
   }
   100% {
-    transform: translateX(300%);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 0%, transparent);
   }
+}
+
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes esmaecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+input:-webkit-autofill,
+input:autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--panel) inset;
+  -webkit-text-fill-color: var(--fg);
 }

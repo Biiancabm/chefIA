@@ -20,20 +20,36 @@ enum StatusVinculo {
 }
 
 enum StatusOS {
+  // Cliente pediu: aguarda o passeador aceitar
+  PENDENTE_EXECUTOR
+  // Passeador agendou: aguarda o cliente aceitar
+  PENDENTE_CLIENTE
   AGENDADO
   EXECUTANDO
   FINALIZADO
   CANCELADO
+  // Pedido recusado por quem precisava aceitar
+  RECUSADO
   RECEBIDO
 }
 
+// A plataforma atende só o ramo de pets
 enum Segmento {
   PET
-  CONSTRUCAO
-  LIMPEZA
-  BELEZA
-  MANUTENCAO
-  AULAS
+}
+
+// Como a empresa paga os passeadores
+enum ModeloRemuneracao {
+  COMISSAO
+  SALARIO
+}
+
+enum FormaPagamento {
+  PIX
+  DINHEIRO
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+  TRANSFERENCIA
   OUTRO
 }
 
@@ -75,7 +91,10 @@ model Empresa {
   nome        String
   documento   String?
   telefone    String?
-  segmento    Segmento @default(OUTRO)
+  segmento    Segmento @default(PET)
+  modeloRemuneracao ModeloRemuneracao @default(COMISSAO)
+  // Logo enviada pelo admin: imagem pequena (até 256px) guardada como data URL
+  logoUrl     String?
   criadoPorId String
   criadoEm    DateTime @default(now())
 
@@ -84,6 +103,7 @@ model Empresa {
   convites      Convite[]
   servicos      Servico[]
   ordensServico OrdemServico[]
+  assistidos    Assistido[]
 }
 
 model Vinculo {
@@ -94,10 +114,22 @@ model Vinculo {
   status    StatusVinculo @default(ATIVO)
   criadoEm  DateTime      @default(now())
 
-  user    User    @relation(fields: [userId], references: [id])
-  empresa Empresa @relation(fields: [empresaId], references: [id])
+  // Só para clientes: o funcionário responsável por atender esse cliente
+  vinculoResponsavelId String?
+
+  // Só para passeadores: quanto recebem (depende do modelo de remuneração da empresa)
+  comissaoPercentual Decimal? @db.Decimal(5, 2)
+  salarioMensal      Decimal? @db.Decimal(10, 2)
+
+  user                    User       @relation(fields: [userId], references: [id])
+  empresa                 Empresa     @relation(fields: [empresaId], references: [id])
+  responsavel             Vinculo?    @relation("ClienteResponsavel", fields: [vinculoResponsavelId], references: [id])
+  clientes                Vinculo[]   @relation("ClienteResponsavel")
+  convitesComoResponsavel Convite[]   @relation("ConviteResponsavel")
+  assistidos              Assistido[] @relation("AssistidoCliente")
 
   servicosQueExecuta ExecutorServico[]
+  servicosCriados    Servico[]          @relation("ServicoCriadoPor")
   ordensComoCliente  OrdemServico[]     @relation("OrdemServicoCliente")
   itensComoExecutor  OrdemServicoItem[] @relation("OrdemServicoItemExecutor")
 
@@ -105,18 +137,23 @@ model Vinculo {
 }
 
 model Convite {
-  id             String       @id @default(uuid())
-  empresaId      String
-  papel          PapelVinculo
-  token          String       @unique
-  emailConvidado String?
-  criadoPorId    String
-  expiraEm       DateTime
-  usadoEm        DateTime?
-  criadoEm       DateTime     @default(now())
+  id                   String       @id @default(uuid())
+  empresaId            String
+  papel                PapelVinculo
+  token                String       @unique
+  emailConvidado       String?
+  criadoPorId          String
+  expiraEm             DateTime
+  usadoEm              DateTime?
+  criadoEm             DateTime     @default(now())
+  // Convite de cliente: funcionário que vai atendê-lo
+  vinculoResponsavelId String?
+  // Convite de passeador: serviços que ele já fica habilitado a fazer ao entrar
+  servicoIds           String[]
 
-  empresa   Empresa @relation(fields: [empresaId], references: [id])
-  criadoPor User    @relation("ConviteCriador", fields: [criadoPorId], references: [id])
+  empresa     Empresa  @relation(fields: [empresaId], references: [id])
+  criadoPor   User     @relation("ConviteCriador", fields: [criadoPorId], references: [id])
+  responsavel Vinculo? @relation("ConviteResponsavel", fields: [vinculoResponsavelId], references: [id])
 }
 
 model Servico {
@@ -127,9 +164,13 @@ model Servico {
   valor     Decimal  @db.Decimal(10, 2)
   fotos     String[]
   ativo     Boolean  @default(true)
+  // Serviço criado por um passeador só vale depois que o administrador aprova
+  aprovado           Boolean  @default(true)
+  criadoPorVinculoId String?
   criadoEm  DateTime @default(now())
 
   empresa           Empresa            @relation(fields: [empresaId], references: [id])
+  criadoPorVinculo  Vinculo?           @relation("ServicoCriadoPor", fields: [criadoPorVinculoId], references: [id])
   executores        ExecutorServico[]
   itensOrdemServico OrdemServicoItem[]
   camposRelatorio   CampoRelatorio[]
@@ -152,6 +193,11 @@ model ExecutorServico {
   id                String @id @default(uuid())
   vinculoExecutorId String
   servicoId         String
+  // Preço próprio do passeador nesse serviço (vazio = preço do catálogo)
+  valor             Decimal?  @db.Decimal(10, 2)
+  // Novo preço pedido pelo passeador, aguardando o administrador aprovar
+  valorProposto     Decimal?  @db.Decimal(10, 2)
+  propostoEm        DateTime?
 
   vinculoExecutor Vinculo @relation(fields: [vinculoExecutorId], references: [id])
   servico         Servico @relation(fields: [servicoId], references: [id])
@@ -163,17 +209,22 @@ model OrdemServico {
   id               String   @id @default(uuid())
   empresaId        String
   vinculoClienteId String
+  assistidoId      String?
   status           StatusOS @default(AGENDADO)
   dataAgendada     DateTime
   observacoes      String?
   valorTotal       Decimal  @default(0) @db.Decimal(10, 2)
+  // Financeiro: quando o valor entrou e como foi pago (vazio = ainda não recebido)
+  pagoEm           DateTime?
+  formaPagamento   FormaPagamento?
   criadoPorId      String
   criadoEm         DateTime @default(now())
   atualizadoEm     DateTime @updatedAt
 
-  empresa        Empresa @relation(fields: [empresaId], references: [id])
-  vinculoCliente Vinculo @relation("OrdemServicoCliente", fields: [vinculoClienteId], references: [id])
-  criadoPor      User    @relation("OrdemServicoCriador", fields: [criadoPorId], references: [id])
+  empresa        Empresa    @relation(fields: [empresaId], references: [id])
+  vinculoCliente Vinculo    @relation("OrdemServicoCliente", fields: [vinculoClienteId], references: [id])
+  assistido      Assistido? @relation(fields: [assistidoId], references: [id])
+  criadoPor      User       @relation("OrdemServicoCriador", fields: [criadoPorId], references: [id])
 
   itens OrdemServicoItem[]
 }
@@ -216,4 +267,26 @@ model RelatorioValor {
   campo     CampoRelatorio @relation(fields: [campoId], references: [id])
 
   @@unique([relatorioId, campoId])
+}
+
+// Quem (ou o que) recebe o cuidado: o pet, a criança, o imóvel...
+// Pertence a um cliente da empresa e alimenta o briefing do atendimento.
+model Assistido {
+  id               String   @id @default(uuid())
+  empresaId        String
+  vinculoClienteId String
+  nome             String
+  fotoUrl          String?
+  // Dados específicos do ramo (raça, porte, endereço...), definidos no frontend
+  dados            Json     @default("{}")
+  // Briefing: o que o profissional precisa saber e lembrar
+  informacoes      String[]
+  lembretes        String[]
+  ativo            Boolean  @default(true)
+  criadoEm         DateTime @default(now())
+  atualizadoEm     DateTime @updatedAt
+
+  empresa        Empresa        @relation(fields: [empresaId], references: [id])
+  vinculoCliente Vinculo        @relation("AssistidoCliente", fields: [vinculoClienteId], references: [id])
+  ordensServico  OrdemServico[]
 }

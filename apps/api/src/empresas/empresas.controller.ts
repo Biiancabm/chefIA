@@ -8,7 +8,10 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { PapelVinculo } from '@prisma/client';
+import { PapelVinculo, Vinculo } from '@prisma/client';
+import { CurrentVinculo } from '../common/decorators/current-vinculo.decorator';
+import { DefinirRemuneracaoDto } from './dto/definir-remuneracao.dto';
+import { DefinirResponsavelDto } from './dto/definir-responsavel.dto';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -57,6 +60,42 @@ export class EmpresasController {
   @Roles(PapelVinculo.ADMIN)
   listarMembros(@Param('empresaId') empresaId: string) {
     return this.empresasService.listarMembros(empresaId);
+  }
+
+  @Get(':empresaId/clientes')
+  @UseGuards(EmpresaRoleGuard)
+  @Roles(PapelVinculo.ADMIN, PapelVinculo.EXECUTOR)
+  listarClientes(
+    @Param('empresaId') empresaId: string,
+    @CurrentVinculo() vinculo: Vinculo,
+  ) {
+    return this.empresasService.listarClientes(empresaId, vinculo);
+  }
+
+  @Patch(':empresaId/membros/:vinculoId/responsavel')
+  @UseGuards(EmpresaRoleGuard)
+  @Roles(PapelVinculo.ADMIN)
+  definirResponsavel(
+    @Param('empresaId') empresaId: string,
+    @Param('vinculoId') vinculoId: string,
+    @Body() dto: DefinirResponsavelDto,
+  ) {
+    return this.empresasService.definirResponsavel(
+      empresaId,
+      vinculoId,
+      dto.vinculoResponsavelId ?? null,
+    );
+  }
+
+  @Patch(':empresaId/membros/:vinculoId/remuneracao')
+  @UseGuards(EmpresaRoleGuard)
+  @Roles(PapelVinculo.ADMIN)
+  definirRemuneracao(
+    @Param('empresaId') empresaId: string,
+    @Param('vinculoId') vinculoId: string,
+    @Body() dto: DefinirRemuneracaoDto,
+  ) {
+    return this.empresasService.definirRemuneracao(empresaId, vinculoId, dto);
   }
 
   @Delete(':empresaId/membros/:vinculoId')

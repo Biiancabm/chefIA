@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsInt, IsOptional, Min } from 'class-validator';
+import { IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { PapelVinculo } from '@prisma/client';
 
 export class CreateConviteDto {
@@ -13,4 +13,15 @@ export class CreateConviteDto {
   @IsOptional()
   @IsEmail()
   emailConvidado?: string;
+
+  // Convite de cliente: funcionário que vai atendê-lo
+  @IsOptional()
+  @IsString()
+  vinculoResponsavelId?: string;
+
+  // Convite de passeador: serviços que ele já fica habilitado a fazer ao aceitar
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  servicoIds?: string[];
 }

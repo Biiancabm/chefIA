@@ -1,15 +1,18 @@
-import { Outlet, Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, Outlet, useMatch } from 'react-router-dom';
 import { useAuth } from '../lib/auth-context';
-import { Button } from './ui/Button';
-import { Avatar } from './ui/Avatar';
+import { Logo, LogoMarca } from './Logo';
+import { UserMenu } from './UserMenu';
 
 export function Layout() {
-  const { user, carregando, sair } = useAuth();
+  const { user, carregando } = useAuth();
+  const dentroDaEmpresa = useMatch('/empresas/:empresaId/*');
 
   if (carregando) {
     return (
-      <div className="flex h-screen items-center justify-center text-text-muted">
-        Carregando...
+      <div className="flex h-dvh items-center justify-center">
+        <span className="animate-pulse">
+          <LogoMarca tamanho={36} />
+        </span>
       </div>
     );
   }
@@ -18,26 +21,20 @@ export function Layout() {
     return <Navigate to="/login" replace />;
   }
 
+  // Dentro de uma empresa, a lateral da empresa é a moldura
+  if (dentroDaEmpresa) return <Outlet />;
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
-              U
-            </div>
-            <span className="text-lg font-semibold text-text">Universal</span>
+    <div className="flex min-h-dvh flex-col bg-background">
+      <header className="sticky top-0 z-30 border-b border-border bg-panel/90 pt-[env(safe-area-inset-top)] backdrop-blur">
+        <div className="flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link to="/" aria-label="Início">
+            <Logo tamanho={26} />
           </Link>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-text-muted sm:inline">{user.nome}</span>
-            <Avatar nome={user.nome} size={32} />
-            <Button variant="ghost" onClick={sair}>
-              Sair
-            </Button>
-          </div>
+          <UserMenu compacto />
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="w-full flex-1 px-4 pb-[calc(3rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:px-8 lg:pt-8">
         <Outlet />
       </main>
     </div>

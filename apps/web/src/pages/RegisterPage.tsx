@@ -1,7 +1,8 @@
+import { mensagemDaApi } from '../lib/erros';
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { AuthLayout, Erro } from '../components/AuthLayout';
 import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { useAuth } from '../lib/auth-context';
 
@@ -18,6 +19,8 @@ export function RegisterPage() {
 
   if (user) return <Navigate to={redirect} replace />;
 
+  const linkLogin = `/login${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`;
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setErro('');
@@ -25,57 +28,70 @@ export function RegisterPage() {
     try {
       await registrar({ nome, email, senha });
       navigate(redirect);
-    } catch (err: any) {
-      setErro(err.response?.data?.message ?? 'Não foi possível criar a conta');
+    } catch (err) {
+      setErro(mensagemDaApi(err, 'Não foi possível criar a conta. Tente de novo.'));
     } finally {
       setCarregando(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface px-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="mb-1 text-xl font-semibold text-text">Criar conta</h1>
-        <p className="mb-6 text-sm text-text-muted">
-          Comece a usar a Universal
-        </p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input
-            label="Nome"
-            required
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-          />
-          <Input
-            label="Email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Input
-            label="Senha"
-            type="password"
-            required
-            minLength={6}
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-          />
-          {erro && <p className="text-sm text-status-cancelado-text">{erro}</p>}
-          <Button type="submit" loading={carregando} className="mt-2 w-full">
-            Criar conta
-          </Button>
-        </form>
-        <p className="mt-6 text-center text-sm text-text-muted">
+    <AuthLayout
+      titulo="Criar conta"
+      subtitulo="Leva menos de um minuto. Depois é só criar sua empresa ou aceitar um convite."
+      topo={
+        <Link to={linkLogin} className="hidden font-medium text-primary-text hover:underline sm:inline">
+          Entrar
+        </Link>
+      }
+      rodape={
+        <>
           Já tem conta?{' '}
-          <Link
-            to={`/login${redirect !== '/' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}
-            className="font-medium text-primary hover:underline"
-          >
+          <Link to={linkLogin} className="font-medium text-primary-text underline-offset-4 hover:underline">
             Entrar
           </Link>
-        </p>
-      </Card>
-    </div>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Input
+          label="Nome"
+          name="nome"
+          placeholder="Seu nome completo"
+          autoComplete="name"
+
+          required
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+        />
+        <Input
+          label="Email"
+          name="email"
+          type="email"
+          placeholder="voce@exemplo.com"
+          autoComplete="email"
+
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <Input
+          label="Senha"
+          name="senha"
+          type="password"
+          dica="Mínimo de 6 caracteres"
+          autoComplete="new-password"
+
+          required
+          minLength={6}
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+        />
+        {erro && <Erro texto={erro} />}
+        <Button type="submit" loading={carregando} className="mt-1 h-10 w-full">
+          Criar conta
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

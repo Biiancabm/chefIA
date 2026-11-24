@@ -1,5 +1,6 @@
-import { Segmento } from '@prisma/client';
+import { ModeloRemuneracao } from '@prisma/client';
 import { IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsLogo } from './logo.validator';
 
 export class UpdateEmpresaDto {
   @IsOptional()
@@ -7,12 +8,15 @@ export class UpdateEmpresaDto {
   nome?: string;
 
   @IsOptional()
-  @IsEnum(Segmento)
-  segmento?: Segmento;
+  @IsEnum(ModeloRemuneracao)
+  modeloRemuneracao?: ModeloRemuneracao;
 
   @IsOptional()
   documento?: string;
 
   @IsOptional()
   telefone?: string;
+
+  @IsLogo()
+  logoUrl?: string | null;
 }

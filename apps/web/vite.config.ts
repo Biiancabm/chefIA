@@ -10,7 +10,14 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
+        // Repassa o IP de quem acessou (X-Forwarded-For), para o limite de tentativas ser por pessoa
+        xfwd: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      // Fotos enviadas (pets e relatórios), servidas pela API
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
       },
     },
   },

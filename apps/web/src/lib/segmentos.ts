@@ -1,13 +1,4 @@
-import {
-  Briefcase,
-  GraduationCap,
-  HardHat,
-  PawPrint,
-  Scissors,
-  Sparkles,
-  Wrench,
-  type LucideIcon,
-} from 'lucide-react';
+import { PawPrint, type LucideIcon } from 'lucide-react';
 import type { PapelVinculo, Segmento } from '../types';
 
 // Uma palavra com singular, plural e gênero, para montar frases como "Nova obra" ou "Nenhum passeio"
@@ -15,6 +6,23 @@ export interface Termo {
   singular: string;
   plural: string;
   feminino?: boolean;
+}
+
+// Um campo do cadastro de quem recebe o cuidado (raça do pet, endereço do imóvel...)
+export interface CampoAssistido {
+  chave: string;
+  rotulo: string;
+  opcoes?: string[]; // com opções vira uma lista de escolha; sem, texto livre
+  placeholder?: string;
+}
+
+// Cadastro de quem recebe o cuidado. Ramos onde o próprio cliente é atendido não têm.
+export interface ConfigAssistido {
+  termo: Termo; // Pet, Criança, Imóvel...
+  icon: LucideIcon;
+  campos: CampoAssistido[];
+  exemploInformacao: string; // placeholder do briefing
+  exemploLembrete: string;
 }
 
 export interface ConfigSegmento {
@@ -27,6 +35,7 @@ export interface ConfigSegmento {
     executor: Termo; // quem presta o serviço
     cliente: Termo; // quem contrata
   };
+  assistido: ConfigAssistido | null;
 }
 
 export const SEGMENTOS: Record<Segmento, ConfigSegmento> = {
@@ -34,85 +43,30 @@ export const SEGMENTOS: Record<Segmento, ConfigSegmento> = {
     label: 'Pets',
     descricao: 'Passeador de cães, pet sitter, cuidados com animais',
     icon: PawPrint,
-    cores: { primary: '#ea580c', hover: '#c2410c', light: '#ffedd5' },
+    cores: { primary: '#c2410c', hover: '#9a3412', light: '#ffedd5' },
     termos: {
       ordem: { singular: 'Passeio', plural: 'Passeios' },
       executor: { singular: 'Passeador', plural: 'Passeadores' },
-      cliente: { singular: 'Tutor', plural: 'Tutores' },
-    },
-  },
-  CONSTRUCAO: {
-    label: 'Construção e reformas',
-    descricao: 'Pedreiro, pintor, gesseiro, obras em geral',
-    icon: HardHat,
-    cores: { primary: '#a16207', hover: '#854d0e', light: '#fef3c7' },
-    termos: {
-      ordem: { singular: 'Obra', plural: 'Obras', feminino: true },
-      executor: { singular: 'Profissional', plural: 'Profissionais' },
       cliente: { singular: 'Cliente', plural: 'Clientes' },
     },
-  },
-  LIMPEZA: {
-    label: 'Limpeza',
-    descricao: 'Diarista, faxina, limpeza pós-obra',
-    icon: Sparkles,
-    cores: { primary: '#0891b2', hover: '#0e7490', light: '#cffafe' },
-    termos: {
-      ordem: { singular: 'Limpeza', plural: 'Limpezas', feminino: true },
-      executor: { singular: 'Diarista', plural: 'Diaristas' },
-      cliente: { singular: 'Cliente', plural: 'Clientes' },
-    },
-  },
-  BELEZA: {
-    label: 'Beleza e estética',
-    descricao: 'Cabeleireiro, manicure, estética',
-    icon: Scissors,
-    cores: { primary: '#db2777', hover: '#be185d', light: '#fce7f3' },
-    termos: {
-      ordem: { singular: 'Atendimento', plural: 'Atendimentos' },
-      executor: { singular: 'Profissional', plural: 'Profissionais' },
-      cliente: { singular: 'Cliente', plural: 'Clientes' },
-    },
-  },
-  MANUTENCAO: {
-    label: 'Manutenção e reparos',
-    descricao: 'Eletricista, encanador, ar-condicionado',
-    icon: Wrench,
-    cores: { primary: '#4f46e5', hover: '#4338ca', light: '#e0e7ff' },
-    termos: {
-      ordem: { singular: 'Chamado', plural: 'Chamados' },
-      executor: { singular: 'Técnico', plural: 'Técnicos' },
-      cliente: { singular: 'Cliente', plural: 'Clientes' },
-    },
-  },
-  AULAS: {
-    label: 'Aulas e treinos',
-    descricao: 'Professor particular, personal trainer',
-    icon: GraduationCap,
-    cores: { primary: '#7c3aed', hover: '#6d28d9', light: '#ede9fe' },
-    termos: {
-      ordem: { singular: 'Aula', plural: 'Aulas', feminino: true },
-      executor: { singular: 'Professor', plural: 'Professores' },
-      cliente: { singular: 'Aluno', plural: 'Alunos' },
-    },
-  },
-  OUTRO: {
-    label: 'Outro ramo',
-    descricao: 'Qualquer outro tipo de prestação de serviço',
-    icon: Briefcase,
-    cores: { primary: '#2563eb', hover: '#1d4ed8', light: '#dbeafe' },
-    termos: {
-      ordem: { singular: 'Ordem de serviço', plural: 'Ordens de serviço', feminino: true },
-      executor: { singular: 'Executor', plural: 'Executores' },
-      cliente: { singular: 'Cliente', plural: 'Clientes' },
+    assistido: {
+      termo: { singular: 'Pet', plural: 'Pets' },
+      icon: PawPrint,
+      campos: [
+        { chave: 'especie', rotulo: 'Espécie', opcoes: ['Cachorro', 'Gato', 'Outro'] },
+        { chave: 'raca', rotulo: 'Raça', placeholder: 'Ex.: Golden Retriever' },
+        { chave: 'porte', rotulo: 'Porte', opcoes: ['Pequeno', 'Médio', 'Grande'] },
+        { chave: 'idade', rotulo: 'Idade', placeholder: 'Ex.: 3 anos' },
+      ],
+      exemploInformacao: 'Ex.: Costuma puxar a guia nos primeiros minutos',
+      exemploLembrete: 'Ex.: Dar água após o passeio',
     },
   },
 };
 
-export const LISTA_SEGMENTOS = Object.keys(SEGMENTOS) as Segmento[];
-
-export function configSegmento(segmento: Segmento | undefined | null) {
-  return SEGMENTOS[segmento ?? 'OUTRO'] ?? SEGMENTOS.OUTRO;
+// A plataforma atende só o ramo de pets; o parâmetro fica para quando houver outros
+export function configSegmento(_segmento?: Segmento | null) {
+  return SEGMENTOS.PET;
 }
 
 const minusculo = (t: Termo, plural = false) => {
@@ -131,7 +85,11 @@ export const texto = {
   todos: (t: Termo) => `${t.feminino ? 'Todas as' : 'Todos os'} ${minusculo(t, true)}`,
   os: (t: Termo) => `${t.feminino ? 'as' : 'os'} ${minusculo(t, true)}`,
   concluidos: (t: Termo) => (t.feminino ? 'concluídas' : 'concluídos'),
+  concluido: (t: Termo) => (t.feminino ? 'concluída' : 'concluído'),
   doDa: (t: Termo) => `${t.feminino ? 'da' : 'do'} ${minusculo(t)}`,
+  o: (t: Termo) => `${t.feminino ? 'a' : 'o'} ${minusculo(t)}`,
+  cadastrado: (t: Termo) => (t.feminino ? 'cadastrada' : 'cadastrado'),
+  meus: (t: Termo) => `${t.feminino ? 'Minhas' : 'Meus'} ${minusculo(t, true)}`,
   um: (t: Termo) => `${t.feminino ? 'uma' : 'um'} ${minusculo(t)}`,
   agendado: (t: Termo) => (t.feminino ? 'agendada' : 'agendado'),
   esse: (t: Termo) => `${t.feminino ? 'essa' : 'esse'} ${minusculo(t)}`,
@@ -143,17 +101,23 @@ export function nomePapel(segmento: Segmento | undefined | null, papel: PapelVin
   return papel === 'EXECUTOR' ? termos.executor.singular : termos.cliente.singular;
 }
 
-// Troca a cor principal do site inteiro para a cor do ramo
+// Guarda a cor do ramo (usada na marca da empresa); o roxo do percurso continua sendo a ação principal
 export function aplicarTema(segmento: Segmento | null) {
   const root = document.documentElement.style;
   if (!segmento) {
-    root.removeProperty('--color-primary');
-    root.removeProperty('--color-primary-hover');
-    root.removeProperty('--color-primary-light');
+    root.removeProperty('--trade');
+    
     return;
   }
   const { cores } = configSegmento(segmento);
-  root.setProperty('--color-primary', cores.primary);
-  root.setProperty('--color-primary-hover', cores.hover);
-  root.setProperty('--color-primary-light', cores.light);
+  root.setProperty('--trade', cores.primary);
+  
+}
+
+// Linha "Golden Retriever · Grande · 3 anos" com os campos preenchidos do cadastro
+export function resumoDados(dados: Record<string, string> | undefined, config: ConfigAssistido) {
+  return config.campos
+    .map((c) => dados?.[c.chave])
+    .filter(Boolean)
+    .join(' · ');
 }

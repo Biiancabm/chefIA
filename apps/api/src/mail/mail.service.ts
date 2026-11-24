@@ -20,7 +20,7 @@ export class MailService {
     const host = this.config.get<string>('SMTP_HOST');
     this.remetente =
       this.config.get<string>('SMTP_FROM') ??
-      '"Universal" <no-reply@universal.app>';
+      '"easyService" <no-reply@easyservice.app>';
     this.frontendUrl = (
       this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5173'
     ).replace(/\/$/, '');

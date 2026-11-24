@@ -1,15 +1,17 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PapelVinculo, StatusVinculo } from '@prisma/client';
+import { PapelVinculo, Prisma, StatusVinculo, Vinculo } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdicionarExecutorDto } from './dto/adicionar-executor.dto';
 import { CreateCampoRelatorioDto } from './dto/create-campo-relatorio.dto';
 import { CreateServicoDto } from './dto/create-servico.dto';
 import { UpdateCampoRelatorioDto } from './dto/update-campo-relatorio.dto';
+import { ProporPrecoDto, ResponderPrecoDto } from './dto/preco-executor.dto';
 import { UpdateServicoDto } from './dto/update-servico.dto';
 
 const INCLUDE_EXECUTORES = {
@@ -21,16 +23,24 @@ const INCLUDE_EXECUTORES = {
     },
   },
   camposRelatorio: { orderBy: { ordem: 'asc' as const } },
+  criadoPorVinculo: { include: { user: { select: { nome: true } } } },
 };
 
-function mapServico<T extends { executores: any[] }>(servico: T) {
-  const { executores, ...resto } = servico;
+function mapServico<T extends { executores: any[]; criadoPorVinculo?: any }>(servico: T) {
+  const { executores, criadoPorVinculo, ...resto } = servico;
   return {
     ...resto,
+    // Passeador que criou o serviço (vazio = criado pelo administrador)
+    criadoPor: criadoPorVinculo
+      ? { vinculoId: criadoPorVinculo.id, nome: criadoPorVinculo.user.nome }
+      : null,
     executores: executores.map((e) => ({
       vinculoExecutorId: e.vinculoExecutor.id,
       nome: e.vinculoExecutor.user.nome,
       email: e.vinculoExecutor.user.email,
+      valor: e.valor,
+      valorProposto: e.valorProposto,
+      propostoEm: e.propostoEm,
     })),
   };
 }
@@ -39,7 +49,10 @@ function mapServico<T extends { executores: any[] }>(servico: T) {
 export class ServicosService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(empresaId: string, dto: CreateServicoDto) {
+  // Admin cria serviço que já vale. Passeador cria um pedido de serviço: ele já fica
+  // habilitado nele, mas só dá para agendar depois que o administrador aprovar.
+  create(empresaId: string, vinculo: Vinculo, dto: CreateServicoDto) {
+    const doPasseador = vinculo.papel === PapelVinculo.EXECUTOR;
     return this.prisma.servico.create({
       data: {
         empresaId,
@@ -47,17 +60,65 @@ export class ServicosService {
         descricao: dto.descricao,
         valor: dto.valor,
         fotos: dto.fotos ?? [],
+        aprovado: !doPasseador,
+        criadoPorVinculoId: doPasseador ? vinculo.id : null,
+        ...(doPasseador ? { executores: { create: { vinculoExecutorId: vinculo.id } } } : {}),
       },
     });
   }
 
-  async findAllDaEmpresa(empresaId: string, apenasAtivos: boolean) {
+  // Admin vê tudo (com incluirInativos). Os outros veem os serviços ativos e aprovados;
+  // o passeador vê também os que ele mesmo pediu e ainda aguardam aprovação.
+  async findAllDaEmpresa(empresaId: string, apenasAtivos: boolean, vinculo: Vinculo) {
+    const filtro: Prisma.ServicoWhereInput =
+      vinculo.papel === PapelVinculo.ADMIN
+        ? apenasAtivos
+          ? { ativo: true }
+          : {}
+        : {
+            ativo: true,
+            OR: [
+              { aprovado: true },
+              ...(vinculo.papel === PapelVinculo.EXECUTOR ? [{ criadoPorVinculoId: vinculo.id }] : []),
+            ],
+          };
     const servicos = await this.prisma.servico.findMany({
-      where: { empresaId, ...(apenasAtivos ? { ativo: true } : {}) },
+      where: { empresaId, ...filtro },
       include: INCLUDE_EXECUTORES,
       orderBy: { criadoEm: 'desc' },
     });
     return servicos.map(mapServico);
+  }
+
+  // Admin aprova o serviço pedido pelo passeador, ou recusa (o pedido é apagado)
+  async responderServico(empresaId: string, servicoId: string, aprovar: boolean) {
+    const servico = await this.buscarDaEmpresa(empresaId, servicoId);
+    if (servico.aprovado) {
+      throw new BadRequestException('Esse serviço já está aprovado');
+    }
+    if (aprovar) {
+      await this.prisma.servico.update({ where: { id: servicoId }, data: { aprovado: true } });
+      return this.findOne(empresaId, servicoId);
+    }
+    await this.apagarPedido(servicoId);
+  }
+
+  // Passeador desiste do serviço que pediu, enquanto ainda não foi aprovado
+  async desistirDoPedido(empresaId: string, servicoId: string, vinculoId: string) {
+    const servico = await this.buscarDaEmpresa(empresaId, servicoId);
+    if (servico.aprovado || servico.criadoPorVinculoId !== vinculoId) {
+      throw new ForbiddenException('Você só pode desistir de um serviço que pediu e ainda não foi aprovado');
+    }
+    await this.apagarPedido(servicoId);
+  }
+
+  // Um serviço ainda não aprovado nunca foi agendado, então pode ser apagado inteiro
+  private async apagarPedido(servicoId: string) {
+    await this.prisma.$transaction([
+      this.prisma.executorServico.deleteMany({ where: { servicoId } }),
+      this.prisma.campoRelatorio.deleteMany({ where: { servicoId } }),
+      this.prisma.servico.delete({ where: { id: servicoId } }),
+    ]);
   }
 
   async findOne(empresaId: string, servicoId: string) {
@@ -148,6 +209,76 @@ export class ServicosService {
         vinculoExecutorId_servicoId: { vinculoExecutorId, servicoId },
       },
     });
+  }
+
+  // Passeador pede um novo preço; só passa a valer depois que o administrador aprovar
+  async proporPreco(
+    empresaId: string,
+    servicoId: string,
+    vinculoExecutorId: string,
+    dto: ProporPrecoDto,
+  ) {
+    await this.buscarAssociacao(empresaId, servicoId, vinculoExecutorId);
+    await this.prisma.executorServico.update({
+      where: { vinculoExecutorId_servicoId: { vinculoExecutorId, servicoId } },
+      data: { valorProposto: dto.valor, propostoEm: new Date() },
+    });
+    return this.findOne(empresaId, servicoId);
+  }
+
+  async cancelarProposta(empresaId: string, servicoId: string, vinculoExecutorId: string) {
+    await this.buscarAssociacao(empresaId, servicoId, vinculoExecutorId);
+    await this.prisma.executorServico.update({
+      where: { vinculoExecutorId_servicoId: { vinculoExecutorId, servicoId } },
+      data: { valorProposto: null, propostoEm: null },
+    });
+    return this.findOne(empresaId, servicoId);
+  }
+
+  async responderPreco(
+    empresaId: string,
+    servicoId: string,
+    vinculoExecutorId: string,
+    dto: ResponderPrecoDto,
+  ) {
+    const associacao = await this.buscarAssociacao(empresaId, servicoId, vinculoExecutorId);
+    if (associacao.valorProposto === null) {
+      throw new BadRequestException('Não há preço aguardando aprovação');
+    }
+    await this.prisma.executorServico.update({
+      where: { id: associacao.id },
+      data: {
+        ...(dto.aprovar ? { valor: associacao.valorProposto } : {}),
+        valorProposto: null,
+        propostoEm: null,
+      },
+    });
+    return this.findOne(empresaId, servicoId);
+  }
+
+  // Volta o passeador ao preço do catálogo
+  async usarPrecoDoCatalogo(empresaId: string, servicoId: string, vinculoExecutorId: string) {
+    const associacao = await this.buscarAssociacao(empresaId, servicoId, vinculoExecutorId);
+    await this.prisma.executorServico.update({
+      where: { id: associacao.id },
+      data: { valor: null },
+    });
+    return this.findOne(empresaId, servicoId);
+  }
+
+  private async buscarAssociacao(
+    empresaId: string,
+    servicoId: string,
+    vinculoExecutorId: string,
+  ) {
+    await this.buscarDaEmpresa(empresaId, servicoId);
+    const associacao = await this.prisma.executorServico.findUnique({
+      where: { vinculoExecutorId_servicoId: { vinculoExecutorId, servicoId } },
+    });
+    if (!associacao) {
+      throw new NotFoundException('Esse passeador não faz esse serviço');
+    }
+    return associacao;
   }
 
   async criarCampoRelatorio(

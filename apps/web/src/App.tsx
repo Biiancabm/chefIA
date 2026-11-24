@@ -5,7 +5,9 @@ import { DashboardPage } from './pages/DashboardPage';
 import { EmpresaDashboardPage } from './pages/empresa/EmpresaDashboardPage';
 import { EmpresaIndexRedirect } from './pages/empresa/EmpresaIndexRedirect';
 import { EmpresaLayout } from './pages/empresa/EmpresaLayout';
+import { AssistidosPage } from './pages/empresa/AssistidosPage';
 import { EquipePage } from './pages/empresa/EquipePage';
+import { FinanceiroPage } from './pages/empresa/FinanceiroPage';
 import { OrdemServicoDetailPage } from './pages/empresa/OrdemServicoDetailPage';
 import { OrdensServicoPage } from './pages/empresa/OrdensServicoPage';
 import { ServicosPage } from './pages/empresa/ServicosPage';
@@ -30,6 +32,8 @@ export function App() {
             <Route path="dashboard" element={<EmpresaDashboardPage />} />
             <Route path="servicos" element={<ServicosPage />} />
             <Route path="equipe" element={<EquipePage />} />
+            <Route path="financeiro" element={<FinanceiroPage />} />
+            <Route path="assistidos" element={<AssistidosPage />} />
             <Route path="ordens-servico" element={<OrdensServicoPage />} />
             <Route
               path="ordens-servico/:ordemServicoId"

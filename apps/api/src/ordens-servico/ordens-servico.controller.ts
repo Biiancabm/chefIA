@@ -7,6 +7,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { EmpresaRoleGuard } from '../common/guards/empresa-role.guard';
 import { CreateOrdemServicoDto } from './dto/create-ordem-servico.dto';
 import { CreateRelatorioDto } from './dto/create-relatorio.dto';
+import { RegistrarPagamentoDto } from './dto/registrar-pagamento.dto';
 import { UpdateStatusOrdemServicoDto } from './dto/update-status-ordem-servico.dto';
 import { OrdensServicoService } from './ordens-servico.service';
 
@@ -15,14 +16,15 @@ import { OrdensServicoService } from './ordens-servico.service';
 export class OrdensServicoController {
   constructor(private readonly ordensServicoService: OrdensServicoService) {}
 
+  // Admin agenda direto; passeador e cliente criam um pedido que o outro lado aceita
   @Post()
-  @Roles(PapelVinculo.ADMIN, PapelVinculo.EXECUTOR)
   create(
     @Param('empresaId') empresaId: string,
     @CurrentUser() user: CurrentUserPayload,
+    @CurrentVinculo() vinculo: Vinculo,
     @Body() dto: CreateOrdemServicoDto,
   ) {
-    return this.ordensServicoService.create(empresaId, user.id, dto);
+    return this.ordensServicoService.create(empresaId, user.id, vinculo, dto);
   }
 
   @Get()
@@ -55,6 +57,17 @@ export class OrdensServicoController {
       vinculo,
       dto,
     );
+  }
+
+  // Financeiro: só o administrador marca o valor como recebido
+  @Patch(':ordemServicoId/pagamento')
+  @Roles(PapelVinculo.ADMIN)
+  registrarPagamento(
+    @Param('empresaId') empresaId: string,
+    @Param('ordemServicoId') ordemServicoId: string,
+    @Body() dto: RegistrarPagamentoDto,
+  ) {
+    return this.ordensServicoService.registrarPagamento(empresaId, ordemServicoId, dto);
   }
 
   @Post(':ordemServicoId/itens/:itemId/relatorio')

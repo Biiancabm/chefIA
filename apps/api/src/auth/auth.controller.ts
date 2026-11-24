@@ -7,6 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { AlterarSenhaDto } from './dto/alterar-senha.dto';
 import { CurrentUser, CurrentUserPayload } from './decorators/current-user.decorator';
@@ -17,15 +18,20 @@ import { RegisterDto } from './dto/register.dto';
 import { UpdatePerfilDto } from './dto/update-perfil.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
+// Contra quem tenta adivinhar senhas ou criar contas em massa: até 10 tentativas por minuto por endereço
+const LIMITE_SENSIVEL = { default: { limit: 10, ttl: 60_000 } };
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Throttle(LIMITE_SENSIVEL)
   @Post('registro')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
+  @Throttle(LIMITE_SENSIVEL)
   @Post('login')
   @HttpCode(200)
   login(@Body() dto: LoginDto) {
@@ -51,12 +57,14 @@ export class AuthController {
     return this.authService.alterarSenha(user.id, dto);
   }
 
+  @Throttle(LIMITE_SENSIVEL)
   @Post('esqueci-senha')
   @HttpCode(200)
   esqueciSenha(@Body() dto: EsqueciSenhaDto) {
     return this.authService.esqueciSenha(dto);
   }
 
+  @Throttle(LIMITE_SENSIVEL)
   @Post('redefinir-senha')
   @HttpCode(204)
   redefinirSenha(@Body() dto: RedefinirSenhaDto) {

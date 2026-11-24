@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { api, TOKEN_STORAGE_KEY } from './api';
+import { api, lerToken, limparToken, salvarToken } from './api';
 import type { Usuario } from '../types';
 
 interface RegisterInput {
@@ -18,6 +18,7 @@ interface RegisterInput {
 interface LoginInput {
   email: string;
   senha: string;
+  lembrar?: boolean;
 }
 
 interface AuthContextValue {
@@ -35,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const token = lerToken();
     if (!token) {
       setCarregando(false);
       return;
@@ -43,24 +44,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .get<Usuario>('/auth/me')
       .then((res) => setUser(res.data))
-      .catch(() => localStorage.removeItem(TOKEN_STORAGE_KEY))
+      .catch(() => limparToken())
       .finally(() => setCarregando(false));
   }, []);
 
-  async function login(input: LoginInput) {
+  async function login({ lembrar = true, ...input }: LoginInput) {
     const res = await api.post('/auth/login', input);
-    localStorage.setItem(TOKEN_STORAGE_KEY, res.data.accessToken);
+    salvarToken(res.data.accessToken, lembrar);
     setUser(res.data.user);
   }
 
   async function registrar(input: RegisterInput) {
     const res = await api.post('/auth/registro', input);
-    localStorage.setItem(TOKEN_STORAGE_KEY, res.data.accessToken);
+    salvarToken(res.data.accessToken);
     setUser(res.data.user);
   }
 
   function sair() {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    limparToken();
     setUser(null);
   }
 
